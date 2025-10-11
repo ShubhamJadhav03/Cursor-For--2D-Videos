@@ -1,0 +1,11 @@
+# Python / Backend
+/manim-ai-backend/venv/
+/manim-ai-backend/__pycache__/
+/manim-ai-backend/media/
+/manim-ai-backend/temp_scenes/
+*.pyc
+
+# JavaScript / Frontend
+/frontend/node_modules/
+/frontend/build/
+.DS_Store

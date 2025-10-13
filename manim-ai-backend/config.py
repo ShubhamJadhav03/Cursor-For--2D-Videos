@@ -12,6 +12,8 @@ PROJECT_ROOT = os.getcwd()
 MEDIA_DIR = os.path.join(PROJECT_ROOT, "media")
 TEMP_SCENES_DIR = os.path.join(PROJECT_ROOT, "temp_scenes")
 TEMP_CLIP_DIR = os.path.join(MEDIA_DIR, "temp_clips")
+# --- Database ---
+DATABASE_URL = "postgresql://postgres:admin@localhost:5433/manim_jobs"
 
 # --- Prompt Engineering Section ---
 

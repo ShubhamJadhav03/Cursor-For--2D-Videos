@@ -8,38 +8,58 @@ import uuid
 import shutil
 import logging
 import ffmpeg
-from fastapi import APIRouter, HTTPException, File, UploadFile
+from fastapi import APIRouter, HTTPException, File, UploadFile, Depends
 from fastapi.responses import FileResponse
-
-from schemas import SceneRequest, UploadClipResponse, StitchRequest
-from services import CodeValidator, ManimRunner, AIService
+from sqlalchemy.orm import Session
+from tasks import generate_video_task, celery
+from schemas import SceneRequest, UploadClipResponse, StitchRequest, JobResponse, StatusResponse
 from config import TEMP_CLIP_DIR, MEDIA_DIR
+from database import get_db
+from models import Job
+
+
+
 
 # Create the router
 router = APIRouter(tags=["generation"])
 
 
-@router.post("/generate-scene/")
-async def generate_scene(request: SceneRequest):
-    """Generate a single Manim animation from a text prompt."""
+@router.post("/generate-scene/", response_model=JobResponse)
+async def generate_scene(request: SceneRequest, db: Session = Depends(get_db)):
+    """
+    Creates a job record in the database, sends the job to Celery,
+    and immediately returns a job ID.
+    """
     try:
-        # Generate code using AI service
-        raw_code = AIService.generate_code(request.prompt)
-        
-        # Validate and run the code
-        validator = CodeValidator(raw_code)
-        clean_code = validator.run()
-        runner = ManimRunner(clean_code)
-        video_path = runner.run()
-        
-        logging.info(f"🎥 Returning video file: {video_path}")
-        return FileResponse(video_path, media_type="video/mp4", filename="animation.mp4")
-        
-    except HTTPException:
-        raise
+        job_id = str(uuid.uuid4())
+        new_job = Job(id=job_id, status="processing")
+        db.add(new_job)
+        db.commit()
+        db.refresh(new_job)
+
+        generate_video_task.delay(job_id, request.prompt)
+        logging.info(f"✨ Job {job_id} submitted for prompt: '{request.prompt}'")
+        return {"job_id": job_id, "status": "processing"}
     except Exception as e:
-        logging.error(f"Unexpected error in generate_scene: {e}")
-        raise HTTPException(status_code=500, detail=f"An unexpected internal error occurred: {e}")
+        logging.error(f"Failed to submit task to Celery: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start the video generation job.")
+
+
+@router.get("/task-status/{job_id}", response_model=StatusResponse)
+async def get_task_status(job_id: str, db: Session = Depends(get_db)):
+    """
+    Checks the status of a job by querying the database.
+    """
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "video_url": job.video_path,
+        "error": job.error,
+    }
 
 
 @router.post("/upload-clip/", response_model=UploadClipResponse)
@@ -96,3 +116,20 @@ async def stitch_story(request: StitchRequest):
         for path in file_paths:
             if os.path.exists(path):
                 os.remove(path)
+
+
+@router.get("/get-video/")
+async def get_video(path: str):
+    """
+    Safely serves a video file from the server's media directory.
+    The frontend will call this to get the actual video data.
+    """
+    # Security Check: Ensure the requested path is within our allowed media directory
+    # to prevent users from accessing arbitrary files on the server.
+    if not os.path.abspath(path).startswith(os.path.abspath(MEDIA_DIR)):
+        raise HTTPException(status_code=403, detail="Forbidden: Access to this path is not allowed.")
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Video file not found.")
+
+    return FileResponse(path, media_type="video/mp4", filename=os.path.basename(path))

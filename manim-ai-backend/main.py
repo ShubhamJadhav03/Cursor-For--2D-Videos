@@ -41,3 +41,5 @@ app.include_router(generation_router)
 @app.get("/")
 def read_root():
     return {"status": "🚀 Manim AI Generator is running!"}
+
+

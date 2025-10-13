@@ -170,56 +170,80 @@ export default function VideoSceneBuilder() {
 
 
 // And REPLACE it with this new version:
-  const handleAddScene = async () => {
-      const trimmed = desc.trim();
-      if (!trimmed) return;
+// frontend/src/App.jsx
 
-      // Set loading state and log the start
-      setIsGenerating(true);
-      addLog(`🎬 Requesting scene: "${trimmed}"...`);
-      
-      try {
-        // --- API Call to Your Backend ---
-        const response = await fetch('http://localhost:8000/generate-scene/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: trimmed }),
-        });
+// --- REPLACE your handleAddScene function with this one ---
+const handleAddScene = async () => {
+  const trimmed = desc.trim();
+  if (!trimmed || isGenerating) return;
 
-        if (!response.ok) {
-          // If the backend returns an error, show it
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Backend failed to generate video.');
+  setIsGenerating(true);
+  addLog(`🎬 Requesting scene: "${trimmed}"...`);
+  
+  try {
+    // Step 1: Start the generation job and get a job_id
+    const startResponse = await fetch('http://localhost:8000/generate-scene/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: trimmed }),
+    });
+
+    if (!startResponse.ok) {
+      throw new Error('Failed to start the generation job.');
+    }
+    const { job_id } = await startResponse.json();
+    addLog(`✨ Job started with ID: ${job_id}`);
+
+    // Step 2: Poll the status endpoint until the job is done
+    const pollJobStatus = new Promise((resolve, reject) => {
+      const interval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`http://localhost:8000/task-status/${job_id}`);
+          const data = await statusResponse.json();
+
+          if (data.status === 'completed') {
+            clearInterval(interval);
+            resolve(data.video_url); // The local file path from the backend
+          } else if (data.status === 'failed') {
+            clearInterval(interval);
+            reject(new Error(data.error || 'Job failed for an unknown reason.'));
+          }
+          // If still "processing", the loop will just continue
+        } catch (pollError) {
+          clearInterval(interval);
+          reject(pollError);
         }
+      }, 3000); // Check every 3 seconds
+    });
 
-        // Get the video file from the response
-        const videoBlob = await response.blob();
-        const videoUrl = URL.createObjectURL(videoBlob);
+    // Wait for the polling to finish
+    const videoPath = await pollJobStatus;
+    addLog(`✅ Scene generation complete. Fetching video...`);
 
-        // Create the new scene object with the real video URL
-        const newScene = {
-          id: `scene-${crypto.randomUUID()}`,
-          name: trimmed,
-          url: videoUrl, // <-- The scene now has a real video URL
-        };
+    // Step 3: Use the new /get-video/ endpoint to fetch the actual video file
+    const videoResponse = await fetch(`http://localhost:8000/get-video/?path=${encodeURIComponent(videoPath)}`);
 
-        // Add the new scene to the bin and set it as the preview
-        setScenes((s) => [...s, newScene]);
-        setPreviewUrl(videoUrl);
-        addLog(`✅ Scene "${trimmed}" generated successfully!`);
-        setDesc("");
+    if (!videoResponse.ok) {
+        throw new Error("Failed to fetch the final video file from the server.");
+    }
 
-      } 
-      catch (error) 
-      {
-        console.error("Generation failed:", error);
-        addLog(`❌ ERROR: ${error.message}`);
-      } 
-      finally {
-        // Reset loading state
-        setIsGenerating(false);
-      }
-  };
+    const videoBlob = await videoResponse.blob();
+    const videoUrl = URL.createObjectURL(videoBlob);
+    
+    // Update the UI
+    setPreviewUrl(videoUrl);
+    const newScene = { id: `scene-${crypto.randomUUID()}`, name: trimmed, url: videoUrl };
+    setScenes((s) => [...s, newScene]);
+    addLog(`🎉 Scene "${trimmed}" ready for preview!`);
+    setDesc("");
+
+  } catch (error) {
+    console.error("Generation failed:", error);
+    addLog(`❌ ERROR: ${error.message}`);
+  } finally {
+    setIsGenerating(false);
+  }
+};
 
   const handleDeleteFromTimeline = (id) => {
     setTimeline((prev) => prev.filter((item) => item.id !== id));

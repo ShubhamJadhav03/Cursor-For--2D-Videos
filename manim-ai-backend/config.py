@@ -6,14 +6,15 @@ Contains all global constants and prompt engineering templates.
 import os
 
 # --- Constants ---
-OLLAMA_API_URL = "http://localhost:11434/api/chat"
+OLLAMA_API_URL = "http://host.docker.internal:11434/api/chat"
 OLLAMA_MODEL = "codellama:7b"
 PROJECT_ROOT = os.getcwd()
 MEDIA_DIR = os.path.join(PROJECT_ROOT, "media")
 TEMP_SCENES_DIR = os.path.join(PROJECT_ROOT, "temp_scenes")
 TEMP_CLIP_DIR = os.path.join(MEDIA_DIR, "temp_clips")
 # --- Database ---
-DATABASE_URL = "postgresql://postgres:admin@localhost:5433/manim_jobs"
+import os
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost:5433/manim_jobs")
 
 # --- Prompt Engineering Section ---
 

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
-  DragOverlay,
   closestCenter,
   KeyboardSensor,
   PointerSensor,
@@ -17,17 +16,11 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Save, Download, X } from 'lucide-react';
+import { Save, Download, X } from 'lucide-react';
 // --- Sortable Scene (Left Panel) ---
 function SortableScene({ scene, onPreview }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: scene.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: scene.id });
+  const style = { opacity: isDragging ? 0.4 : 1 };
 
   return (
     <div
@@ -80,11 +73,7 @@ function SortableTimelineItem({ item, index, onDelete }) {
           e.stopPropagation();
           onDelete();
         }}
-        {...{
-          onPointerDown: (e) => e.stopPropagation(),
-          onMouseDown: (e) => e.stopPropagation(),
-          onTouchStart: (e) => e.stopPropagation(),
-        }}
+        onPointerDown={(e) => e.stopPropagation()}
         className="absolute -top-2 -right-2 hidden group-hover:flex items-center justify-center rounded-full bg-red-600 hover:bg-red-500 p-1 opacity-0 group-hover:opacity-100 transition-all duration-200"
         title="Remove"
       >
@@ -168,9 +157,7 @@ export default function VideoSceneBuilder() {
 
   // --- Add Scene ---
 
-
-// And REPLACE it with this new version:
-// frontend/src/App.jsx
+// In frontend/src/App.jsx
 
 // --- REPLACE your handleAddScene function with this one ---
 const handleAddScene = async () => {
@@ -203,7 +190,7 @@ const handleAddScene = async () => {
 
           if (data.status === 'completed') {
             clearInterval(interval);
-            resolve(data.video_url); // The local file path from the backend
+            resolve(data.video_url); // This is the local file path from the backend
           } else if (data.status === 'failed') {
             clearInterval(interval);
             reject(new Error(data.error || 'Job failed for an unknown reason.'));
@@ -216,7 +203,7 @@ const handleAddScene = async () => {
       }, 3000); // Check every 3 seconds
     });
 
-    // Wait for the polling to finish
+    // Wait for the polling to finish and get the file path
     const videoPath = await pollJobStatus;
     addLog(`✅ Scene generation complete. Fetching video...`);
 
@@ -227,10 +214,11 @@ const handleAddScene = async () => {
         throw new Error("Failed to fetch the final video file from the server.");
     }
 
+    // Convert the response to a blob and create a temporary URL
     const videoBlob = await videoResponse.blob();
     const videoUrl = URL.createObjectURL(videoBlob);
     
-    // Update the UI
+    // Update the UI with the new scene and preview
     setPreviewUrl(videoUrl);
     const newScene = { id: `scene-${crypto.randomUUID()}`, name: trimmed, url: videoUrl };
     setScenes((s) => [...s, newScene]);

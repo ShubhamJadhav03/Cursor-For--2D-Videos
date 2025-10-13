@@ -1,0 +1,95 @@
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:latest
+    container_name: manim_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: manim_jobs
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - manim-network
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: manim_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - manim-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./manim-ai-backend
+      dockerfile: Dockerfile
+    container_name: manim_backend
+    # --- THIS IS FIX #1 ---
+    # The 'entrypoint' runs the setup script first.
+    # The 'command' is then passed to the script to be executed at the end, keeping the container alive.
+    entrypoint: /app/docker-entrypoint.sh
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    # --- END OF FIX #1 ---
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/manim_jobs
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./manim-ai-backend/media:/app/media
+      - ./manim-ai-backend/temp_scenes:/app/temp_scenes
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    networks:
+      - manim-network
+
+  # Celery Worker
+  worker:
+    build:
+      context: ./manim-ai-backend
+      dockerfile: Dockerfile.worker
+    container_name: manim_worker
+    # --- THIS IS FIX #2 ---
+    # This explicitly tells the worker container how to find the host machine.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # --- END OF FIX #2 ---
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/manim_jobs
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./manim-ai-backend/media:/app/media
+      - ./manim-ai-backend/temp_scenes:/app/temp_scenes
+    depends_on:
+      - db
+      - redis
+      - backend
+    networks:
+      - manim-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend/frontend
+      dockerfile: Dockerfile
+    container_name: manim_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - manim-network
+
+networks:
+  manim-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local

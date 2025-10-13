@@ -19,7 +19,12 @@ from config import (
 )
 from services import CodeValidator, ManimRunner
 
-celery = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
+import os
+celery = Celery(
+    'tasks', 
+    broker=os.getenv('REDIS_URL', 'redis://localhost:6379/0'), 
+    backend=os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 @celery.task
@@ -62,6 +67,9 @@ def generate_video_task(job_id: str, prompt: str):
             job.video_path = video_path
             db.commit()
             logging.info(f"✅ Worker finished job {job_id}. Video at: {video_path}")
+        
+        # --- THIS IS THE FIX ---
+        return {"status": "SUCCESS", "video_path": video_path}
         
     except Exception as e:
         logging.error(f"❌ Worker failed job {job_id}. Error: {e}")

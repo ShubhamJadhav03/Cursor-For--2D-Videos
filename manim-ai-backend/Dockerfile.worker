@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies, including those for Manim's text rendering
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    libgl1-mesa-dri \
+    libglib2.0-0 \
+    # Manim's text rendering dependencies
+    libcairo2-dev \
+    libpango1.0-dev \
+    pkg-config \
+    # FFmpeg for video stitching
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Run the Celery worker with the correct task path and Windows-/Docker-friendly pool
+CMD ["celery", "-A", "tasks.celery", "worker", "--loglevel=info", "--pool=gevent"]

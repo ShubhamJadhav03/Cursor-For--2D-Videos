@@ -24,16 +24,29 @@ jobs:
       with:
         python-version: '3.11'
 
-    # Step 3: Install all the Python dependencies
-    - name: Install dependencies
+    # Step 3: Install system dependencies required for ManimPango
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libpango1.0-dev \
+          libpangocairo-1.0-0 \
+          libcairo2-dev \
+          pkg-config \
+          build-essential \
+          libgl1-mesa-glx \
+          libglib2.0-0
+
+    # Step 4: Install Python dependencies
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pytest
         pip install -r manim-ai-backend/requirements.txt
-        # We'll install our testing library here
-        pip install pytest and then push on github
 
-    # Step 4: Run a simple test (we will create this test next)
+    # Step 5: Run tests
     - name: Run tests
       run: |
-        pytest manim-ai-backend/
+        cd manim-ai-backend
+        pytest tests/ -v
         

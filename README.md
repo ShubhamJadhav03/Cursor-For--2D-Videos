@@ -188,7 +188,7 @@ This project represents a deep dive into:
 📍 Passionate about creating intelligent and scalable web systems.  
 
 [![GitHub](https://img.shields.io/badge/GitHub-ShubhamJadhav03-black?logo=github)](https://github.com/ShubhamJadhav03)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-ShubhamJadhav-blue?logo=linkedin)](https://linkedin.com/in/shubham-jadhav)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-ShubhamJadhav-blue?logo=linkedin)](https://www.linkedin.com/in/shubham-jadhav-3058a42a7/)
 
 ---
 

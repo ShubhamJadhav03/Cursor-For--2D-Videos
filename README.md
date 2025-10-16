@@ -20,8 +20,11 @@ It uses an **AI model (CodeLlama)** to produce Python code for the [Manim Engine
 
 The project includes a **3-panel scene editor** that allows users to preview, rearrange, and export multi-scene videos — all in a browser.
 
-![Scene Editor UI](https://i.imgur.com/your-image-url.png)  
-*Upload a screenshot of your 3-panel Scene Editor UI to Imgur and replace the link above.*
+
+
+https://github.com/user-attachments/assets/527d7ac1-3cb2-4e1d-9298-41d8bf15ce78
+
+
 
 ---
 

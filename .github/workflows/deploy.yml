@@ -26,7 +26,7 @@ jobs:
         context: ./manim-ai-backend
         file: ./manim-ai-backend/Dockerfile
         push: true
-        tags: your-dockerhub-username/manim-ai-backend:latest
+        tags: shubhamjadhav2003/manim-ai-backend:latest
 
     - name: Build and push worker image
       uses: docker/build-push-action@v4

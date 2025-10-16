@@ -34,8 +34,9 @@ jobs:
           libcairo2-dev \
           pkg-config \
           build-essential \
-          libgl1-mesa-glx \
-          libglib2.0-0
+          libgl1-mesa-dev \
+          libglib2.0-0 \
+          ffmpeg
 
     # Step 4: Install Python dependencies
     - name: Install Python dependencies
